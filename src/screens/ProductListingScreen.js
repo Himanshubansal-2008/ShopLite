@@ -25,7 +25,17 @@ const CARD_GAP = 12;
 const CARD_WIDTH = (width - 32 - CARD_GAP) / 2;
 
 export default function ProductListingScreen({ navigation, route }) {
-  const { colors, typography, borderRadius, addToCart, animationMode } = useAppTheme();
+  const {
+    colors,
+    typography,
+    borderRadius,
+    addToCart,
+    animationMode,
+    setAnimationMode,
+    demoReloadKey,
+    triggerLoadingDemo,
+  } = useAppTheme();
+
   const initialCategory = route.params?.initialCategory || 'all';
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -41,6 +51,17 @@ export default function ProductListingScreen({ navigation, route }) {
     return () => clearTimeout(timer);
   }, []);
 
+  // Respond to demo reload trigger
+  useEffect(() => {
+    if (demoReloadKey > 0) {
+      setIsLoading(true);
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [demoReloadKey]);
+
   // Category switch loading simulation
   const handleSelectCategory = (catId) => {
     setSelectedCategory(catId);
@@ -50,7 +71,7 @@ export default function ProductListingScreen({ navigation, route }) {
     }, 450);
   };
 
-  // Search input handler with brief search skeleton simulation
+  // Search input handler with search skeleton simulation
   const handleSearchChange = (text) => {
     setSearchQuery(text);
     if (text.length > 0 && !isSearching) {
@@ -152,7 +173,7 @@ export default function ProductListingScreen({ navigation, route }) {
         />
       </View>
 
-      {/* Meta Bar */}
+      {/* Meta Bar & Quick Animation Controller */}
       <View style={styles.metaBar}>
         <Text style={[typography.caption, { color: colors.textSecondary }]}>
           SHOWING{' '}
@@ -161,19 +182,50 @@ export default function ProductListingScreen({ navigation, route }) {
           </Text>{' '}
           {filteredProducts.length === 1 ? 'PRODUCT' : 'PRODUCTS'}
         </Text>
-        {(searchQuery.length > 0 || selectedCategory !== 'all') && (
-          <TouchableOpacity onPress={handleClearFilters}>
-            <Text style={[styles.activeFilterReset, { color: colors.primary }]}>
-              Clear all
-            </Text>
-          </TouchableOpacity>
-        )}
+
+        <View style={styles.animationControlsRow}>
+          {['shimmer', 'pulse', 'static'].map((mode) => (
+            <TouchableOpacity
+              key={mode}
+              onPress={() => {
+                setAnimationMode(mode);
+                triggerLoadingDemo();
+              }}
+              style={[
+                styles.miniModeBtn,
+                {
+                  backgroundColor:
+                    animationMode === mode ? colors.primary : colors.cardBackground,
+                  borderColor:
+                    animationMode === mode ? colors.primary : colors.border,
+                },
+              ]}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.miniModeText,
+                  {
+                    color: animationMode === mode ? '#FFFFFF' : colors.textSecondary,
+                    fontWeight: animationMode === mode ? '700' : '500',
+                  },
+                ]}
+              >
+                {mode}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       {/* Content: SkellX Skeletons or Grid */}
       {isLoading ? (
         <View style={styles.skeletonContainer}>
-          {/* SkellX GridSkeleton for product list loading */}
+          <View style={styles.skeletonIndicator}>
+            <Text style={[styles.skeletonBadge, { color: colors.primary }]}>
+              Rendering SkellX &lt;GridSkeleton animation="{animationMode}" /&gt;
+            </Text>
+          </View>
           <GridSkeleton
             count={6}
             columns={2}
@@ -185,7 +237,11 @@ export default function ProductListingScreen({ navigation, route }) {
         </View>
       ) : isSearching ? (
         <View style={styles.skeletonContainer}>
-          {/* SkellX SearchSkeleton for search filtering loading */}
+          <View style={styles.skeletonIndicator}>
+            <Text style={[styles.skeletonBadge, { color: colors.primary }]}>
+              Rendering SkellX &lt;SearchSkeleton animation="{animationMode}" /&gt;
+            </Text>
+          </View>
           <SearchSkeleton
             results={4}
             showFilters={false}
@@ -246,13 +302,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
-  activeFilterReset: {
-    fontSize: 12,
-    fontWeight: '600',
+  animationControlsRow: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  miniModeBtn: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  miniModeText: {
+    fontSize: 10,
+    textTransform: 'capitalize',
   },
   skeletonContainer: {
     paddingHorizontal: 16,
     paddingTop: 8,
+  },
+  skeletonIndicator: {
+    marginBottom: 8,
+    alignItems: 'center',
+  },
+  skeletonBadge: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   listContent: {
     paddingHorizontal: 16,

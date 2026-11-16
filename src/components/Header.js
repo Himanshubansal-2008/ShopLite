@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '../context/ThemeContext';
 
 export default function Header({ title = 'ShopLite', showBack = false, onBack }) {
-  const { colors, themeMode, toggleTheme, cartCount } = useAppTheme();
+  const { colors, themeMode, toggleTheme, cartCount, openDemoModal, animationMode } = useAppTheme();
 
   return (
     <View
@@ -43,7 +43,20 @@ export default function Header({ title = 'ShopLite', showBack = false, onBack })
       </View>
 
       <View style={styles.rightSection}>
-        {/* Theme toggle */}
+        {/* SkellX Demo Controls Pill */}
+        <TouchableOpacity
+          onPress={openDemoModal}
+          style={[styles.demoPill, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}
+          activeOpacity={0.7}
+          accessibilityLabel="Open SkellX Demo Controls"
+        >
+          <Ionicons name="sparkles" size={14} color={colors.primary} />
+          <Text style={[styles.demoPillText, { color: colors.primary }]}>
+            SkellX Demo
+          </Text>
+        </TouchableOpacity>
+
+        {/* Theme quick toggle */}
         <TouchableOpacity
           onPress={toggleTheme}
           style={[styles.iconButton, { backgroundColor: colors.background }]}
@@ -114,10 +127,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  demoPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  demoPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
   iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',

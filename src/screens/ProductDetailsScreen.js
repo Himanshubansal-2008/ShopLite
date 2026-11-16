@@ -19,7 +19,16 @@ const { width } = Dimensions.get('window');
 
 export default function ProductDetailsScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
-  const { colors, typography, borderRadius, addToCart, animationMode } = useAppTheme();
+  const {
+    colors,
+    typography,
+    borderRadius,
+    addToCart,
+    animationMode,
+    setAnimationMode,
+    demoReloadKey,
+    triggerLoadingDemo,
+  } = useAppTheme();
 
   const productId = route.params?.productId;
   const initialProduct = route.params?.product;
@@ -40,6 +49,17 @@ export default function ProductDetailsScreen({ route, navigation }) {
     }, 700);
     return () => clearTimeout(timer);
   }, [productId]);
+
+  // Respond to demo reload trigger
+  useEffect(() => {
+    if (demoReloadKey > 0) {
+      setIsLoading(true);
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [demoReloadKey]);
 
   const handleRefresh = () => {
     setIsLoading(true);
@@ -72,6 +92,62 @@ export default function ProductDetailsScreen({ route, navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Quick Animation Bar */}
+      <View
+        style={[
+          styles.quickBar,
+          {
+            backgroundColor: colors.cardBackground,
+            borderBottomColor: colors.border,
+          },
+        ]}
+      >
+        <Text style={[styles.quickBarTitle, { color: colors.textSecondary }]}>
+          Animation:
+        </Text>
+        <View style={styles.modeRow}>
+          {['shimmer', 'pulse', 'static'].map((mode) => (
+            <TouchableOpacity
+              key={mode}
+              onPress={() => {
+                setAnimationMode(mode);
+                triggerLoadingDemo();
+              }}
+              style={[
+                styles.modeBtn,
+                {
+                  backgroundColor:
+                    animationMode === mode ? colors.primary : colors.background,
+                  borderColor:
+                    animationMode === mode ? colors.primary : colors.border,
+                },
+              ]}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.modeBtnText,
+                  {
+                    color:
+                      animationMode === mode ? '#FFFFFF' : colors.textPrimary,
+                    fontWeight: animationMode === mode ? '700' : '500',
+                  },
+                ]}
+              >
+                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <TouchableOpacity
+          onPress={triggerLoadingDemo}
+          style={[styles.reloadBtn, { backgroundColor: colors.primaryLight }]}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="reload" size={14} color={colors.primary} />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 }]}
@@ -87,6 +163,11 @@ export default function ProductDetailsScreen({ route, navigation }) {
         {isLoading ? (
           /* SkellX CardSkeleton for Product Details Loading */
           <View style={styles.skeletonContainer}>
+            <View style={styles.skeletonBadgeWrapper}>
+              <Text style={[styles.skeletonBadge, { color: colors.primary }]}>
+                Rendering SkellX &lt;CardSkeleton animation="{animationMode}" /&gt;
+              </Text>
+            </View>
             <CardSkeleton
               width="100%"
               imageHeight={280}
@@ -344,11 +425,51 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  quickBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  quickBarTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  modeRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  modeBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  modeBtnText: {
+    fontSize: 11,
+  },
+  reloadBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   scrollContent: {
     paddingBottom: 24,
   },
   skeletonContainer: {
     padding: 16,
+  },
+  skeletonBadgeWrapper: {
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  skeletonBadge: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   cardSkeletonStyle: {
     borderWidth: 1,

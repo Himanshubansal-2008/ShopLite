@@ -7,10 +7,16 @@ const ThemeContext = createContext();
 export const ThemeProvider = ({ children }) => {
   const [themeMode, setThemeMode] = useState('light');
   const [animationMode, setAnimationMode] = useState('shimmer'); // 'shimmer' | 'pulse' | 'static'
+  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
+  const [demoReloadKey, setDemoReloadKey] = useState(0);
   const [cartCount, setCartCount] = useState(0);
 
   const toggleTheme = () => {
     setThemeMode((prev) => (prev === 'light' ? 'dark' : 'light'));
+  };
+
+  const triggerLoadingDemo = () => {
+    setDemoReloadKey((prev) => prev + 1);
   };
 
   const colors = useMemo(() => {
@@ -31,8 +37,14 @@ export const ThemeProvider = ({ children }) => {
       cartCount,
       setCartCount,
       addToCart: (qty = 1) => setCartCount((prev) => prev + qty),
+      isDemoModalOpen,
+      setIsDemoModalOpen,
+      openDemoModal: () => setIsDemoModalOpen(true),
+      closeDemoModal: () => setIsDemoModalOpen(false),
+      demoReloadKey,
+      triggerLoadingDemo,
     }),
-    [themeMode, colors, animationMode, cartCount]
+    [themeMode, colors, animationMode, cartCount, isDemoModalOpen, demoReloadKey]
   );
 
   return (

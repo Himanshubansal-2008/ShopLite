@@ -22,17 +22,39 @@ const { width } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { colors, typography, borderRadius, addToCart, animationMode } = useAppTheme();
+  const {
+    colors,
+    typography,
+    borderRadius,
+    addToCart,
+    animationMode,
+    setAnimationMode,
+    demoReloadKey,
+    triggerLoadingDemo,
+    openDemoModal,
+  } = useAppTheme();
+
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
 
-  // Simulated initial loading delay
+  // Initial loading simulation
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 900);
     return () => clearTimeout(timer);
   }, []);
+
+  // Respond to demo reload trigger from playground
+  useEffect(() => {
+    if (demoReloadKey > 0) {
+      setIsLoading(true);
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [demoReloadKey]);
 
   const handleRefresh = useCallback(() => {
     setIsLoading(true);
@@ -79,9 +101,79 @@ export default function HomeScreen({ navigation }) {
           />
         </View>
 
+        {/* Quick Animation Mode Bar */}
+        <View style={styles.quickBarContainer}>
+          <View
+            style={[
+              styles.quickBar,
+              {
+                backgroundColor: colors.cardBackground,
+                borderColor: colors.border,
+                borderRadius: borderRadius.md,
+              },
+            ]}
+          >
+            <View style={styles.quickBarLeft}>
+              <Ionicons name="hardware-chip-outline" size={16} color={colors.primary} />
+              <Text style={[styles.quickBarLabel, { color: colors.textPrimary }]}>
+                SkellX Mode:
+              </Text>
+            </View>
+
+            <View style={styles.modePills}>
+              {['shimmer', 'pulse', 'static'].map((mode) => (
+                <TouchableOpacity
+                  key={mode}
+                  onPress={() => {
+                    setAnimationMode(mode);
+                    triggerLoadingDemo();
+                  }}
+                  style={[
+                    styles.modePill,
+                    {
+                      backgroundColor:
+                        animationMode === mode ? colors.primary : colors.background,
+                      borderColor:
+                        animationMode === mode ? colors.primary : colors.border,
+                    },
+                  ]}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.modePillText,
+                      {
+                        color:
+                          animationMode === mode ? '#FFFFFF' : colors.textSecondary,
+                        fontWeight: animationMode === mode ? '700' : '500',
+                      },
+                    ]}
+                  >
+                    {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              onPress={triggerLoadingDemo}
+              style={[styles.reloadIconBtn, { backgroundColor: colors.primaryLight }]}
+              activeOpacity={0.7}
+              accessibilityLabel="Simulate Loading"
+            >
+              <Ionicons name="reload" size={14} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {isLoading ? (
           /* SkellX DashboardSkeleton integrated for Home Screen Loading */
           <View style={styles.skeletonWrapper}>
+            <View style={styles.skeletonIndicator}>
+              <Text style={[styles.skeletonBadge, { color: colors.primary }]}>
+                Rendering SkellX &lt;DashboardSkeleton animation="{animationMode}" /&gt;
+              </Text>
+            </View>
             <DashboardSkeleton
               stats={4}
               activities={3}
@@ -221,9 +313,60 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 4,
   },
+  quickBarContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  quickBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+  },
+  quickBarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  quickBarLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  modePills: {
+    flexDirection: 'row',
+    gap: 5,
+  },
+  modePill: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  modePillText: {
+    fontSize: 11,
+  },
+  reloadIconBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   skeletonWrapper: {
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 12,
+  },
+  skeletonIndicator: {
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  skeletonBadge: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   dashboardSkeleton: {
     width: '100%',
