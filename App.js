@@ -1,32 +1,25 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ThemeProvider, useAppTheme } from './src/context/ThemeContext';
+import AppNavigator from './src/navigation/AppNavigator';
 
-export default function App() {
+function Main() {
+  const { themeMode } = useAppTheme();
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>ShopLite</Text>
-      <Text style={styles.subtitle}>E-Commerce App with SkellX Skeleton Loading</Text>
-      <StatusBar style="auto" />
-    </View>
+    <>
+      <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />
+      <AppNavigator />
+    </>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-  },
-});
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <Main />
+      </ThemeProvider>
+    </SafeAreaProvider>
+  );
+}
