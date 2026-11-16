@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
-  Alert,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CardSkeleton, ProductSkeleton } from 'skellx';
 import { useAppTheme } from '../context/ThemeContext';
 import { PRODUCTS } from '../data/products';
 
@@ -18,7 +19,7 @@ const { width } = Dimensions.get('window');
 
 export default function ProductDetailsScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
-  const { colors, typography, borderRadius, addToCart, cartCount } = useAppTheme();
+  const { colors, typography, borderRadius, addToCart, animationMode } = useAppTheme();
 
   const productId = route.params?.productId;
   const initialProduct = route.params?.product;
@@ -28,9 +29,24 @@ export default function ProductDetailsScreen({ route, navigation }) {
     PRODUCTS.find((p) => p.id === productId) ||
     PRODUCTS[0];
 
+  const [isLoading, setIsLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [addedNotice, setAddedNotice] = useState(false);
   const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [productId]);
+
+  const handleRefresh = () => {
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 800);
+  };
 
   const handleIncrement = () => {
     if (quantity < (product.stock || 99)) {
@@ -59,221 +75,267 @@ export default function ProductDetailsScreen({ route, navigation }) {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 }]}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoading}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
       >
-        {/* Product Image Stage */}
-        <View style={[styles.imageWrapper, { backgroundColor: colors.borderLight }]}>
-          {imageError ? (
-            <View style={styles.fallbackWrapper}>
-              <Ionicons name="cube-outline" size={80} color={colors.textMuted} />
-              <Text style={[styles.fallbackText, { color: colors.textMuted }]}>
-                {product.categoryName}
-              </Text>
-            </View>
-          ) : (
-            <Image
-              source={{ uri: product.image }}
-              style={styles.image}
-              resizeMode="cover"
-              onError={() => setImageError(true)}
+        {isLoading ? (
+          /* SkellX CardSkeleton for Product Details Loading */
+          <View style={styles.skeletonContainer}>
+            <CardSkeleton
+              width="100%"
+              imageHeight={280}
+              avatarSize={38}
+              lines={4}
+              spacing={14}
+              animation={animationMode}
+              style={[
+                styles.cardSkeletonStyle,
+                { backgroundColor: colors.cardBackground, borderColor: colors.border },
+              ]}
             />
-          )}
-
-          {/* Floating Category Pill */}
-          <View style={[styles.categoryBadge, { backgroundColor: colors.cardBackground }]}>
-            <Text style={[styles.categoryBadgeText, { color: colors.primary }]}>
-              {product.categoryName}
-            </Text>
+            <View style={{ marginTop: 16 }}>
+              <ProductSkeleton
+                width="100%"
+                imageHeight={120}
+                titleLines={2}
+                priceWidth="30%"
+                animation={animationMode}
+              />
+            </View>
           </View>
-
-          {/* Stock status */}
-          <View
-            style={[
-              styles.stockBadge,
-              {
-                backgroundColor:
-                  product.stock > 10 ? 'rgba(16, 185, 129, 0.9)' : 'rgba(245, 158, 11, 0.9)',
-              },
-            ]}
-          >
-            <Ionicons name="checkmark-circle" size={12} color="#FFFFFF" />
-            <Text style={styles.stockBadgeText}>
-              {product.stock > 10 ? 'In Stock' : `Only ${product.stock} left`}
-            </Text>
-          </View>
-        </View>
-
-        {/* Content Section */}
-        <View
-          style={[
-            styles.detailsCard,
-            {
-              backgroundColor: colors.cardBackground,
-              borderColor: colors.border,
-              borderRadius: borderRadius.xl,
-            },
-          ]}
-        >
-          {/* Rating & Reviews */}
-          <View style={styles.ratingSection}>
-            <View style={styles.starsRow}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Ionicons
-                  key={star}
-                  name={star <= Math.floor(product.rating) ? 'star' : 'star-half'}
-                  size={16}
-                  color="#F59E0B"
+        ) : (
+          <>
+            {/* Product Image Stage */}
+            <View style={[styles.imageWrapper, { backgroundColor: colors.borderLight }]}>
+              {imageError ? (
+                <View style={styles.fallbackWrapper}>
+                  <Ionicons name="cube-outline" size={80} color={colors.textMuted} />
+                  <Text style={[styles.fallbackText, { color: colors.textMuted }]}>
+                    {product.categoryName}
+                  </Text>
+                </View>
+              ) : (
+                <Image
+                  source={{ uri: product.image }}
+                  style={styles.image}
+                  resizeMode="cover"
+                  onError={() => setImageError(true)}
                 />
-              ))}
-              <Text style={[styles.ratingNumber, { color: colors.textPrimary }]}>
-                {product.rating.toFixed(1)}
-              </Text>
-            </View>
-            <Text style={[styles.reviewsCount, { color: colors.textSecondary }]}>
-              {product.reviewsCount} verified reviews
-            </Text>
-          </View>
+              )}
 
-          {/* Product Title */}
-          <Text style={[typography.titleLarge, { color: colors.textPrimary, marginTop: 10 }]}>
-            {product.name}
-          </Text>
-
-          {/* Pricing Block */}
-          <View style={styles.priceRow}>
-            <Text style={[styles.mainPrice, { color: colors.primary }]}>
-              ${product.price.toFixed(2)}
-            </Text>
-            {product.originalPrice && (
-              <>
-                <Text style={[styles.originalPrice, { color: colors.textMuted }]}>
-                  ${product.originalPrice.toFixed(2)}
+              {/* Floating Category Pill */}
+              <View style={[styles.categoryBadge, { backgroundColor: colors.cardBackground }]}>
+                <Text style={[styles.categoryBadgeText, { color: colors.primary }]}>
+                  {product.categoryName}
                 </Text>
-                <View style={styles.discountTag}>
-                  <Text style={styles.discountTagText}>
-                    SAVE ${(product.originalPrice - product.price).toFixed(0)}
-                  </Text>
-                </View>
-              </>
-            )}
-          </View>
+              </View>
 
-          {/* Divider */}
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-          {/* Description */}
-          <Text style={[typography.titleSmall, { color: colors.textPrimary, marginBottom: 8 }]}>
-            About This Item
-          </Text>
-          <Text style={[typography.bodyMedium, { color: colors.textSecondary, lineHeight: 22 }]}>
-            {product.description}
-          </Text>
-
-          {/* Key Features */}
-          {product.features && product.features.length > 0 && (
-            <View style={styles.featuresSection}>
-              <Text style={[typography.titleSmall, { color: colors.textPrimary, marginBottom: 12 }]}>
-                Highlights & Specifications
-              </Text>
-              {product.features.map((feature, index) => (
-                <View key={index} style={styles.featureItem}>
-                  <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
-                  <Text style={[styles.featureText, { color: colors.textPrimary }]}>
-                    {feature}
-                  </Text>
-                </View>
-              ))}
+              {/* Stock status */}
+              <View
+                style={[
+                  styles.stockBadge,
+                  {
+                    backgroundColor:
+                      product.stock > 10
+                        ? 'rgba(16, 185, 129, 0.9)'
+                        : 'rgba(245, 158, 11, 0.9)',
+                  },
+                ]}
+              >
+                <Ionicons name="checkmark-circle" size={12} color="#FFFFFF" />
+                <Text style={styles.stockBadgeText}>
+                  {product.stock > 10 ? 'In Stock' : `Only ${product.stock} left`}
+                </Text>
+              </View>
             </View>
-          )}
 
-          {/* Quantity Selector */}
-          <View style={[styles.quantityContainer, { borderColor: colors.border }]}>
-            <View>
-              <Text style={[typography.titleSmall, { color: colors.textPrimary }]}>
-                Quantity
-              </Text>
-              <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                Select item units
-              </Text>
-            </View>
+            {/* Content Section */}
             <View
               style={[
-                styles.quantityControls,
-                { backgroundColor: colors.background, borderColor: colors.border },
+                styles.detailsCard,
+                {
+                  backgroundColor: colors.cardBackground,
+                  borderColor: colors.border,
+                  borderRadius: borderRadius.xl,
+                },
               ]}
             >
-              <TouchableOpacity
-                onPress={handleDecrement}
-                style={styles.qtyBtn}
-                disabled={quantity <= 1}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name="remove"
-                  size={18}
-                  color={quantity <= 1 ? colors.textMuted : colors.textPrimary}
-                />
-              </TouchableOpacity>
-              <Text style={[styles.qtyNumber, { color: colors.textPrimary }]}>
-                {quantity}
+              {/* Rating & Reviews */}
+              <View style={styles.ratingSection}>
+                <View style={styles.starsRow}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Ionicons
+                      key={star}
+                      name={star <= Math.floor(product.rating) ? 'star' : 'star-half'}
+                      size={16}
+                      color="#F59E0B"
+                    />
+                  ))}
+                  <Text style={[styles.ratingNumber, { color: colors.textPrimary }]}>
+                    {product.rating.toFixed(1)}
+                  </Text>
+                </View>
+                <Text style={[styles.reviewsCount, { color: colors.textSecondary }]}>
+                  {product.reviewsCount} verified reviews
+                </Text>
+              </View>
+
+              {/* Product Title */}
+              <Text style={[typography.titleLarge, { color: colors.textPrimary, marginTop: 10 }]}>
+                {product.name}
               </Text>
-              <TouchableOpacity
-                onPress={handleIncrement}
-                style={styles.qtyBtn}
-                disabled={quantity >= product.stock}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name="add"
-                  size={18}
-                  color={quantity >= product.stock ? colors.textMuted : colors.textPrimary}
-                />
-              </TouchableOpacity>
+
+              {/* Pricing Block */}
+              <View style={styles.priceRow}>
+                <Text style={[styles.mainPrice, { color: colors.primary }]}>
+                  ${product.price.toFixed(2)}
+                </Text>
+                {product.originalPrice && (
+                  <>
+                    <Text style={[styles.originalPrice, { color: colors.textMuted }]}>
+                      ${product.originalPrice.toFixed(2)}
+                    </Text>
+                    <View style={styles.discountTag}>
+                      <Text style={styles.discountTagText}>
+                        SAVE ${(product.originalPrice - product.price).toFixed(0)}
+                      </Text>
+                    </View>
+                  </>
+                )}
+              </View>
+
+              {/* Divider */}
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+              {/* Description */}
+              <Text style={[typography.titleSmall, { color: colors.textPrimary, marginBottom: 8 }]}>
+                About This Item
+              </Text>
+              <Text style={[typography.bodyMedium, { color: colors.textSecondary, lineHeight: 22 }]}>
+                {product.description}
+              </Text>
+
+              {/* Key Features */}
+              {product.features && product.features.length > 0 && (
+                <View style={styles.featuresSection}>
+                  <Text
+                    style={[
+                      typography.titleSmall,
+                      { color: colors.textPrimary, marginBottom: 12 },
+                    ]}
+                  >
+                    Highlights & Specifications
+                  </Text>
+                  {product.features.map((feature, index) => (
+                    <View key={index} style={styles.featureItem}>
+                      <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
+                      <Text style={[styles.featureText, { color: colors.textPrimary }]}>
+                        {feature}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Quantity Selector */}
+              <View style={[styles.quantityContainer, { borderColor: colors.border }]}>
+                <View>
+                  <Text style={[typography.titleSmall, { color: colors.textPrimary }]}>
+                    Quantity
+                  </Text>
+                  <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                    Select item units
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.quantityControls,
+                    { backgroundColor: colors.background, borderColor: colors.border },
+                  ]}
+                >
+                  <TouchableOpacity
+                    onPress={handleDecrement}
+                    style={styles.qtyBtn}
+                    disabled={quantity <= 1}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="remove"
+                      size={18}
+                      color={quantity <= 1 ? colors.textMuted : colors.textPrimary}
+                    />
+                  </TouchableOpacity>
+                  <Text style={[styles.qtyNumber, { color: colors.textPrimary }]}>
+                    {quantity}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={handleIncrement}
+                    style={styles.qtyBtn}
+                    disabled={quantity >= product.stock}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="add"
+                      size={18}
+                      color={quantity >= product.stock ? colors.textMuted : colors.textPrimary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
-          </View>
-        </View>
+          </>
+        )}
       </ScrollView>
 
       {/* Sticky Bottom Action Bar */}
-      <View
-        style={[
-          styles.bottomBar,
-          {
-            backgroundColor: colors.cardBackground,
-            borderTopColor: colors.border,
-            paddingBottom: Math.max(insets.bottom, 14),
-          },
-        ]}
-      >
-        <View style={styles.totalSection}>
-          <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>
-            Total Price ({quantity} {quantity === 1 ? 'item' : 'items'})
-          </Text>
-          <Text style={[styles.totalPrice, { color: colors.textPrimary }]}>
-            ${totalPrice}
-          </Text>
-        </View>
-
-        <TouchableOpacity
+      {!isLoading && (
+        <View
           style={[
-            styles.cartButton,
+            styles.bottomBar,
             {
-              backgroundColor: addedNotice ? '#10B981' : colors.primary,
-              borderRadius: borderRadius.md,
+              backgroundColor: colors.cardBackground,
+              borderTopColor: colors.border,
+              paddingBottom: Math.max(insets.bottom, 14),
             },
           ]}
-          onPress={handleAddToCart}
-          activeOpacity={0.8}
         >
-          <Ionicons
-            name={addedNotice ? 'checkmark-circle' : 'cart'}
-            size={20}
-            color="#FFFFFF"
-          />
-          <Text style={styles.cartButtonText}>
-            {addedNotice ? 'Added to Cart!' : 'Add to Cart'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+          <View style={styles.totalSection}>
+            <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>
+              Total Price ({quantity} {quantity === 1 ? 'item' : 'items'})
+            </Text>
+            <Text style={[styles.totalPrice, { color: colors.textPrimary }]}>
+              ${totalPrice}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.cartButton,
+              {
+                backgroundColor: addedNotice ? '#10B981' : colors.primary,
+                borderRadius: borderRadius.md,
+              },
+            ]}
+            onPress={handleAddToCart}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name={addedNotice ? 'checkmark-circle' : 'cart'}
+              size={20}
+              color="#FFFFFF"
+            />
+            <Text style={styles.cartButtonText}>
+              {addedNotice ? 'Added to Cart!' : 'Add to Cart'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -284,6 +346,13 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 24,
+  },
+  skeletonContainer: {
+    padding: 16,
+  },
+  cardSkeletonStyle: {
+    borderWidth: 1,
+    borderRadius: 14,
   },
   imageWrapper: {
     width: width,

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  GridSkeleton,
+  SearchSkeleton,
+  EmptyStateSkeleton,
+} from 'skellx';
 import { useAppTheme } from '../context/ThemeContext';
 import SearchBar from '../components/SearchBar';
 import CategoryList from '../components/CategoryList';
@@ -19,11 +25,48 @@ const CARD_GAP = 12;
 const CARD_WIDTH = (width - 32 - CARD_GAP) / 2;
 
 export default function ProductListingScreen({ navigation, route }) {
-  const { colors, typography, borderRadius, addToCart } = useAppTheme();
+  const { colors, typography, borderRadius, addToCart, animationMode } = useAppTheme();
   const initialCategory = route.params?.initialCategory || 'all';
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Initial loading simulation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Category switch loading simulation
+  const handleSelectCategory = (catId) => {
+    setSelectedCategory(catId);
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 450);
+  };
+
+  // Search input handler with brief search skeleton simulation
+  const handleSearchChange = (text) => {
+    setSearchQuery(text);
+    if (text.length > 0 && !isSearching) {
+      setIsSearching(true);
+      setTimeout(() => {
+        setIsSearching(false);
+      }, 400);
+    }
+  };
+
+  const handleRefresh = useCallback(() => {
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 850);
+  }, []);
 
   const filteredProducts = useMemo(() => {
     return PRODUCTS.filter((product) => {
@@ -46,28 +89,32 @@ export default function ProductListingScreen({ navigation, route }) {
   const handleClearFilters = () => {
     setSearchQuery('');
     setSelectedCategory('all');
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 400);
   };
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <View
-        style={[
-          styles.emptyIconCircle,
-          { backgroundColor: colors.borderLight, borderColor: colors.border },
-        ]}
-      >
-        <Ionicons name="search-outline" size={48} color={colors.textMuted} />
-      </View>
-      <Text style={[typography.titleMedium, { color: colors.textPrimary, marginTop: 16 }]}>
+      {/* SkellX EmptyStateSkeleton demonstrates empty search state */}
+      <EmptyStateSkeleton
+        illustrationSize={100}
+        showAction={false}
+        descriptionLines={2}
+        animation={animationMode}
+        style={styles.emptySkeleton}
+      />
+      <Text style={[typography.titleMedium, { color: colors.textPrimary, marginTop: 12 }]}>
         No Products Found
       </Text>
       <Text
         style={[
           typography.bodyMedium,
-          { color: colors.textSecondary, textAlign: 'center', marginTop: 8, paddingHorizontal: 32 },
+          { color: colors.textSecondary, textAlign: 'center', marginTop: 6, paddingHorizontal: 28 },
         ]}
       >
-        We couldn't find any products matching "{searchQuery}". Try checking for typos or searching a different keyword.
+        No matches for "{searchQuery}". Try a different keyword or reset filters.
       </Text>
       <TouchableOpacity
         style={[
@@ -94,14 +141,14 @@ export default function ProductListingScreen({ navigation, route }) {
       >
         <SearchBar
           value={searchQuery}
-          onChangeText={setSearchQuery}
+          onChangeText={handleSearchChange}
           onClear={() => setSearchQuery('')}
           placeholder="Filter by name, brand or type..."
         />
         <CategoryList
           categories={CATEGORIES}
           selectedCategory={selectedCategory}
-          onSelectCategory={setSelectedCategory}
+          onSelectCategory={handleSelectCategory}
         />
       </View>
 
@@ -110,7 +157,7 @@ export default function ProductListingScreen({ navigation, route }) {
         <Text style={[typography.caption, { color: colors.textSecondary }]}>
           SHOWING{' '}
           <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>
-            {filteredProducts.length}
+            {isLoading || isSearching ? '...' : filteredProducts.length}
           </Text>{' '}
           {filteredProducts.length === 1 ? 'PRODUCT' : 'PRODUCTS'}
         </Text>
@@ -123,27 +170,61 @@ export default function ProductListingScreen({ navigation, route }) {
         )}
       </View>
 
-      {/* Two-Column Grid */}
-      <FlatList
-        data={filteredProducts}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        contentContainerStyle={[
-          styles.listContent,
-          filteredProducts.length === 0 && styles.listContentEmpty,
-        ]}
-        columnWrapperStyle={filteredProducts.length > 0 ? styles.columnWrapper : undefined}
-        renderItem={({ item }) => (
-          <ProductCard
-            product={item}
-            style={{ width: CARD_WIDTH }}
-            onPress={() => handleProductPress(item)}
-            onAddToCart={() => addToCart(1)}
+      {/* Content: SkellX Skeletons or Grid */}
+      {isLoading ? (
+        <View style={styles.skeletonContainer}>
+          {/* SkellX GridSkeleton for product list loading */}
+          <GridSkeleton
+            count={6}
+            columns={2}
+            itemHeight={140}
+            spacing={CARD_GAP}
+            showText={true}
+            animation={animationMode}
           />
-        )}
-        ListEmptyComponent={renderEmptyState}
-        showsVerticalScrollIndicator={false}
-      />
+        </View>
+      ) : isSearching ? (
+        <View style={styles.skeletonContainer}>
+          {/* SkellX SearchSkeleton for search filtering loading */}
+          <SearchSkeleton
+            results={4}
+            showFilters={false}
+            showThumbnail={true}
+            thumbnailSize={54}
+            spacing={14}
+            animation={animationMode}
+          />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredProducts}
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          contentContainerStyle={[
+            styles.listContent,
+            filteredProducts.length === 0 && styles.listContentEmpty,
+          ]}
+          columnWrapperStyle={filteredProducts.length > 0 ? styles.columnWrapper : undefined}
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoading}
+              onRefresh={handleRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
+          renderItem={({ item }) => (
+            <ProductCard
+              product={item}
+              style={{ width: CARD_WIDTH }}
+              onPress={() => handleProductPress(item)}
+              onAddToCart={() => addToCart(1)}
+            />
+          )}
+          ListEmptyComponent={renderEmptyState}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </View>
   );
 }
@@ -169,6 +250,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  skeletonContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
   listContent: {
     paddingHorizontal: 16,
     paddingBottom: 32,
@@ -184,16 +269,12 @@ const styles = StyleSheet.create({
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 48,
+    paddingVertical: 24,
     paddingHorizontal: 20,
   },
-  emptyIconCircle: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    borderWidth: 1,
+  emptySkeleton: {
+    width: '100%',
     alignItems: 'center',
-    justifyContent: 'center',
   },
   clearFiltersButton: {
     flexDirection: 'row',

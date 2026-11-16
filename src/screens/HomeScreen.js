@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
-  Image,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DashboardSkeleton } from 'skellx';
 import { useAppTheme } from '../context/ThemeContext';
 import Header from '../components/Header';
 import SearchBar from '../components/SearchBar';
@@ -21,13 +22,24 @@ const { width } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { colors, typography, borderRadius, addToCart } = useAppTheme();
+  const { colors, typography, borderRadius, addToCart, animationMode } = useAppTheme();
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredProducts =
-    selectedCategory === 'all'
-      ? PRODUCTS
-      : PRODUCTS.filter((p) => p.category === selectedCategory);
+  // Simulated initial loading delay
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 900);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+  }, []);
 
   const featuredProducts = PRODUCTS.filter((p) => p.featured);
   const popularProducts = PRODUCTS.filter((p) => p.popular);
@@ -49,6 +61,14 @@ export default function HomeScreen({ navigation }) {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoading}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
       >
         {/* Search Bar Section */}
         <View style={styles.searchSection}>
@@ -59,116 +79,131 @@ export default function HomeScreen({ navigation }) {
           />
         </View>
 
-        {/* Hero Banner */}
-        <View style={styles.bannerContainer}>
-          <View
-            style={[
-              styles.heroBanner,
-              {
-                backgroundColor: colors.primary,
-                borderRadius: borderRadius.lg,
-              },
-            ]}
-          >
-            <View style={styles.heroTextContainer}>
-              <View style={styles.discountBadge}>
-                <Text style={styles.discountText}>SEASON SALE • 25% OFF</Text>
-              </View>
-              <Text style={styles.heroTitle}>Premium Audio & Modern Tech</Text>
-              <Text style={styles.heroSubtitle}>
-                Upgrade your workspace with curated gear
-              </Text>
-              <TouchableOpacity
-                style={styles.heroButton}
-                onPress={() => navigation.navigate('Products')}
-                activeOpacity={0.8}
+        {isLoading ? (
+          /* SkellX DashboardSkeleton integrated for Home Screen Loading */
+          <View style={styles.skeletonWrapper}>
+            <DashboardSkeleton
+              stats={4}
+              activities={3}
+              showChart={true}
+              animation={animationMode}
+              style={styles.dashboardSkeleton}
+            />
+          </View>
+        ) : (
+          <>
+            {/* Hero Banner */}
+            <View style={styles.bannerContainer}>
+              <View
+                style={[
+                  styles.heroBanner,
+                  {
+                    backgroundColor: colors.primary,
+                    borderRadius: borderRadius.lg,
+                  },
+                ]}
               >
-                <Text style={styles.heroButtonText}>Shop Collection</Text>
-                <Ionicons name="arrow-forward" size={14} color="#1E293B" />
+                <View style={styles.heroTextContainer}>
+                  <View style={styles.discountBadge}>
+                    <Text style={styles.discountText}>SEASON SALE • 25% OFF</Text>
+                  </View>
+                  <Text style={styles.heroTitle}>Premium Audio & Modern Tech</Text>
+                  <Text style={styles.heroSubtitle}>
+                    Upgrade your workspace with curated gear
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.heroButton}
+                    onPress={() => navigation.navigate('Products')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.heroButtonText}>Shop Collection</Text>
+                    <Ionicons name="arrow-forward" size={14} color="#1E293B" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            {/* Categories Section */}
+            <View style={styles.sectionHeader}>
+              <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
+                Categories
+              </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Products')}>
+                <Text style={[styles.viewAllText, { color: colors.primary }]}>
+                  View All
+                </Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
-
-        {/* Categories Section */}
-        <View style={styles.sectionHeader}>
-          <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
-            Categories
-          </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Products')}>
-            <Text style={[styles.viewAllText, { color: colors.primary }]}>
-              View All
-            </Text>
-          </TouchableOpacity>
-        </View>
-        <CategoryList
-          categories={CATEGORIES}
-          selectedCategory={selectedCategory}
-          onSelectCategory={(catId) => {
-            setSelectedCategory(catId);
-            if (catId !== 'all') {
-              navigation.navigate('Products', { initialCategory: catId });
-            }
-          }}
-        />
-
-        {/* Featured Products Carousel / Row */}
-        <View style={[styles.sectionHeader, { marginTop: 16 }]}>
-          <View style={styles.titleWithIcon}>
-            <Ionicons name="sparkles" size={18} color="#F59E0B" />
-            <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
-              Featured Gear
-            </Text>
-          </View>
-          <TouchableOpacity onPress={() => navigation.navigate('Products')}>
-            <Text style={[styles.viewAllText, { color: colors.primary }]}>
-              See All
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.horizontalProductsContainer}
-        >
-          {featuredProducts.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              style={styles.featuredCard}
-              onPress={() => handleProductPress(product)}
-              onAddToCart={() => addToCart(1)}
+            <CategoryList
+              categories={CATEGORIES}
+              selectedCategory={selectedCategory}
+              onSelectCategory={(catId) => {
+                setSelectedCategory(catId);
+                if (catId !== 'all') {
+                  navigation.navigate('Products', { initialCategory: catId });
+                }
+              }}
             />
-          ))}
-        </ScrollView>
 
-        {/* Popular Products Grid */}
-        <View style={[styles.sectionHeader, { marginTop: 20 }]}>
-          <View style={styles.titleWithIcon}>
-            <Ionicons name="flame" size={20} color="#EF4444" />
-            <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
-              Popular Essentials
-            </Text>
-          </View>
-          <TouchableOpacity onPress={() => navigation.navigate('Products')}>
-            <Text style={[styles.viewAllText, { color: colors.primary }]}>
-              See All
-            </Text>
-          </TouchableOpacity>
-        </View>
+            {/* Featured Products Section */}
+            <View style={[styles.sectionHeader, { marginTop: 16 }]}>
+              <View style={styles.titleWithIcon}>
+                <Ionicons name="sparkles" size={18} color="#F59E0B" />
+                <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
+                  Featured Gear
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => navigation.navigate('Products')}>
+                <Text style={[styles.viewAllText, { color: colors.primary }]}>
+                  See All
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-        <View style={styles.gridContainer}>
-          {popularProducts.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              style={styles.gridCard}
-              onPress={() => handleProductPress(product)}
-              onAddToCart={() => addToCart(1)}
-            />
-          ))}
-        </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalProductsContainer}
+            >
+              {featuredProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  style={styles.featuredCard}
+                  onPress={() => handleProductPress(product)}
+                  onAddToCart={() => addToCart(1)}
+                />
+              ))}
+            </ScrollView>
+
+            {/* Popular Products Grid */}
+            <View style={[styles.sectionHeader, { marginTop: 20 }]}>
+              <View style={styles.titleWithIcon}>
+                <Ionicons name="flame" size={20} color="#EF4444" />
+                <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
+                  Popular Essentials
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => navigation.navigate('Products')}>
+                <Text style={[styles.viewAllText, { color: colors.primary }]}>
+                  See All
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.gridContainer}>
+              {popularProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  style={styles.gridCard}
+                  onPress={() => handleProductPress(product)}
+                  onAddToCart={() => addToCart(1)}
+                />
+              ))}
+            </View>
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -185,6 +220,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 4,
+  },
+  skeletonWrapper: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  dashboardSkeleton: {
+    width: '100%',
   },
   bannerContainer: {
     paddingHorizontal: 16,
