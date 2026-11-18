@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -43,51 +43,81 @@ export default function ProductListingScreen({ navigation, route }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
 
+  const isMountedRef = useRef(true);
+  const activeOperationIdRef = useRef(0);
+  const activeTimerRef = useRef(null);
+
+  const stopAllLoading = useCallback(() => {
+    if (activeTimerRef.current) {
+      clearTimeout(activeTimerRef.current);
+      activeTimerRef.current = null;
+    }
+    if (isMountedRef.current) {
+      setIsLoading(false);
+      setIsSearching(false);
+    }
+  }, []);
+
+  const runLoadingOperation = useCallback((type, duration) => {
+    if (activeTimerRef.current) {
+      clearTimeout(activeTimerRef.current);
+    }
+    const currentOp = ++activeOperationIdRef.current;
+    if (type === 'search') {
+      setIsLoading(false);
+      setIsSearching(true);
+    } else {
+      setIsSearching(false);
+      setIsLoading(true);
+    }
+
+    activeTimerRef.current = setTimeout(() => {
+      if (isMountedRef.current && activeOperationIdRef.current === currentOp) {
+        setIsLoading(false);
+        setIsSearching(false);
+      }
+    }, duration);
+  }, []);
+
   // Initial loading simulation
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
-  }, []);
+    isMountedRef.current = true;
+    runLoadingOperation('grid', 800);
+
+    return () => {
+      isMountedRef.current = false;
+      if (activeTimerRef.current) {
+        clearTimeout(activeTimerRef.current);
+      }
+    };
+  }, [runLoadingOperation]);
 
   // Respond to demo reload trigger
   useEffect(() => {
     if (demoReloadKey > 0) {
-      setIsLoading(true);
-      const timer = setTimeout(() => {
-        setIsLoading(false);
-      }, 1500);
-      return () => clearTimeout(timer);
+      runLoadingOperation('grid', 1500);
     }
-  }, [demoReloadKey]);
+  }, [demoReloadKey, runLoadingOperation]);
 
   // Category switch loading simulation
   const handleSelectCategory = (catId) => {
     setSelectedCategory(catId);
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 450);
+    runLoadingOperation('grid', 450);
   };
 
-  // Search input handler with search skeleton simulation
+  // Search input handler with race-free search skeleton simulation
   const handleSearchChange = (text) => {
     setSearchQuery(text);
-    if (text.length > 0 && !isSearching) {
-      setIsSearching(true);
-      setTimeout(() => {
-        setIsSearching(false);
-      }, 400);
+    if (text.trim().length > 0) {
+      runLoadingOperation('search', 400);
+    } else {
+      stopAllLoading();
     }
   };
 
   const handleRefresh = useCallback(() => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 850);
-  }, []);
+    runLoadingOperation('grid', 850);
+  }, [runLoadingOperation]);
 
   const filteredProducts = useMemo(() => {
     return PRODUCTS.filter((product) => {
@@ -110,10 +140,7 @@ export default function ProductListingScreen({ navigation, route }) {
   const handleClearFilters = () => {
     setSearchQuery('');
     setSelectedCategory('all');
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 400);
+    runLoadingOperation('grid', 400);
   };
 
   const renderEmptyState = () => (
@@ -163,7 +190,10 @@ export default function ProductListingScreen({ navigation, route }) {
         <SearchBar
           value={searchQuery}
           onChangeText={handleSearchChange}
-          onClear={() => setSearchQuery('')}
+          onClear={() => {
+            setSearchQuery('');
+            stopAllLoading();
+          }}
           placeholder="Filter by name, brand or type..."
         />
         <CategoryList

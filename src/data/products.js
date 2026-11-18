@@ -132,7 +132,7 @@ export const PRODUCTS = [
     ],
     featured: false,
     popular: false,
-    stock: 25,
+    stock: 0,
   },
   {
     id: 'prod-7',

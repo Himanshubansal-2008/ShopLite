@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -37,12 +37,25 @@ export default function HomeScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
 
+  const isMountedRef = useRef(true);
+  const refreshTimerRef = useRef(null);
+
   // Initial loading simulation
   useEffect(() => {
+    isMountedRef.current = true;
     const timer = setTimeout(() => {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }, 900);
-    return () => clearTimeout(timer);
+
+    return () => {
+      isMountedRef.current = false;
+      clearTimeout(timer);
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+    };
   }, []);
 
   // Respond to demo reload trigger from playground
@@ -50,16 +63,23 @@ export default function HomeScreen({ navigation }) {
     if (demoReloadKey > 0) {
       setIsLoading(true);
       const timer = setTimeout(() => {
-        setIsLoading(false);
+        if (isMountedRef.current) {
+          setIsLoading(false);
+        }
       }, 1500);
       return () => clearTimeout(timer);
     }
   }, [demoReloadKey]);
 
   const handleRefresh = useCallback(() => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+    }
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    refreshTimerRef.current = setTimeout(() => {
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }, 1000);
   }, []);
 

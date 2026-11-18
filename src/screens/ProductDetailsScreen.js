@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -38,57 +38,88 @@ export default function ProductDetailsScreen({ route, navigation }) {
     PRODUCTS.find((p) => p.id === productId) ||
     PRODUCTS[0];
 
+  const stock = typeof product?.stock === 'number' ? product.stock : 0;
+  const isOutOfStock = stock <= 0;
+
+  const isMountedRef = useRef(true);
+  const refreshTimerRef = useRef(null);
+  const noticeTimerRef = useRef(null);
+
   const [isLoading, setIsLoading] = useState(true);
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState(isOutOfStock ? 0 : 1);
   const [addedNotice, setAddedNotice] = useState(false);
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
+    isMountedRef.current = true;
+    setQuantity(isOutOfStock ? 0 : 1);
     const timer = setTimeout(() => {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }, 700);
-    return () => clearTimeout(timer);
-  }, [productId]);
+    return () => {
+      isMountedRef.current = false;
+      clearTimeout(timer);
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+    };
+  }, [productId, isOutOfStock]);
 
   // Respond to demo reload trigger
   useEffect(() => {
     if (demoReloadKey > 0) {
       setIsLoading(true);
       const timer = setTimeout(() => {
-        setIsLoading(false);
+        if (isMountedRef.current) {
+          setIsLoading(false);
+        }
       }, 1500);
       return () => clearTimeout(timer);
     }
   }, [demoReloadKey]);
 
   const handleRefresh = () => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+    }
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    refreshTimerRef.current = setTimeout(() => {
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }, 800);
   };
 
   const handleIncrement = () => {
-    if (quantity < (product.stock || 99)) {
+    if (!isOutOfStock && quantity < stock) {
       setQuantity((prev) => prev + 1);
     }
   };
 
   const handleDecrement = () => {
-    if (quantity > 1) {
+    if (!isOutOfStock && quantity > 1) {
       setQuantity((prev) => prev - 1);
     }
   };
 
   const handleAddToCart = () => {
+    if (isOutOfStock || quantity <= 0) {
+      return;
+    }
     addToCart(quantity);
     setAddedNotice(true);
-    setTimeout(() => {
-      setAddedNotice(false);
+    if (noticeTimerRef.current) {
+      clearTimeout(noticeTimerRef.current);
+    }
+    noticeTimerRef.current = setTimeout(() => {
+      if (isMountedRef.current) {
+        setAddedNotice(false);
+      }
     }, 2000);
   };
 
-  const totalPrice = (product.price * quantity).toFixed(2);
+  const totalPrice = isOutOfStock ? '0.00' : (product.price * quantity).toFixed(2);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -218,22 +249,36 @@ export default function ProductDetailsScreen({ route, navigation }) {
               </View>
 
               {/* Stock status */}
-              <View
-                style={[
-                  styles.stockBadge,
-                  {
-                    backgroundColor:
-                      product.stock > 10
-                        ? 'rgba(16, 185, 129, 0.9)'
-                        : 'rgba(245, 158, 11, 0.9)',
-                  },
-                ]}
-              >
-                <Ionicons name="checkmark-circle" size={12} color="#FFFFFF" />
-                <Text style={styles.stockBadgeText}>
-                  {product.stock > 10 ? 'In Stock' : `Only ${product.stock} left`}
-                </Text>
-              </View>
+              {isOutOfStock ? (
+                <View
+                  style={[
+                    styles.stockBadge,
+                    {
+                      backgroundColor: 'rgba(239, 68, 68, 0.95)',
+                    },
+                  ]}
+                >
+                  <Ionicons name="close-circle" size={12} color="#FFFFFF" />
+                  <Text style={styles.stockBadgeText}>Out of Stock</Text>
+                </View>
+              ) : (
+                <View
+                  style={[
+                    styles.stockBadge,
+                    {
+                      backgroundColor:
+                        stock > 10
+                          ? 'rgba(16, 185, 129, 0.9)'
+                          : 'rgba(245, 158, 11, 0.9)',
+                    },
+                  ]}
+                >
+                  <Ionicons name="checkmark-circle" size={12} color="#FFFFFF" />
+                  <Text style={styles.stockBadgeText}>
+                    {stock > 10 ? 'In Stock' : `Only ${stock} left`}
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* Content Section */}
@@ -247,6 +292,29 @@ export default function ProductDetailsScreen({ route, navigation }) {
                 },
               ]}
             >
+              {/* Out of Stock Alert Banner */}
+              {isOutOfStock && (
+                <View
+                  style={[
+                    styles.outOfStockBanner,
+                    {
+                      backgroundColor: colors.mode === 'dark' ? 'rgba(239, 68, 68, 0.15)' : '#FEF2F2',
+                      borderColor: colors.danger,
+                    },
+                  ]}
+                >
+                  <Ionicons name="alert-circle" size={20} color={colors.danger} />
+                  <View style={styles.outOfStockBannerContent}>
+                    <Text style={[styles.outOfStockTitle, { color: colors.danger }]}>
+                      Currently Out of Stock
+                    </Text>
+                    <Text style={[styles.outOfStockDesc, { color: colors.textSecondary }]}>
+                      This item is not available for purchase at the moment.
+                    </Text>
+                  </View>
+                </View>
+              )}
+
               {/* Rating & Reviews */}
               <View style={styles.ratingSection}>
                 <View style={styles.starsRow}>
@@ -331,40 +399,44 @@ export default function ProductDetailsScreen({ route, navigation }) {
                     Quantity
                   </Text>
                   <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                    Select item units
+                    {isOutOfStock ? '0 units in stock' : 'Select item units'}
                   </Text>
                 </View>
                 <View
                   style={[
                     styles.quantityControls,
-                    { backgroundColor: colors.background, borderColor: colors.border },
+                    {
+                      backgroundColor: isOutOfStock ? colors.borderLight : colors.background,
+                      borderColor: colors.border,
+                      opacity: isOutOfStock ? 0.5 : 1,
+                    },
                   ]}
                 >
                   <TouchableOpacity
                     onPress={handleDecrement}
                     style={styles.qtyBtn}
-                    disabled={quantity <= 1}
+                    disabled={isOutOfStock || quantity <= 1}
                     activeOpacity={0.7}
                   >
                     <Ionicons
                       name="remove"
                       size={18}
-                      color={quantity <= 1 ? colors.textMuted : colors.textPrimary}
+                      color={isOutOfStock || quantity <= 1 ? colors.textMuted : colors.textPrimary}
                     />
                   </TouchableOpacity>
-                  <Text style={[styles.qtyNumber, { color: colors.textPrimary }]}>
+                  <Text style={[styles.qtyNumber, { color: isOutOfStock ? colors.textMuted : colors.textPrimary }]}>
                     {quantity}
                   </Text>
                   <TouchableOpacity
                     onPress={handleIncrement}
                     style={styles.qtyBtn}
-                    disabled={quantity >= product.stock}
+                    disabled={isOutOfStock || quantity >= stock}
                     activeOpacity={0.7}
                   >
                     <Ionicons
                       name="add"
                       size={18}
-                      color={quantity >= product.stock ? colors.textMuted : colors.textPrimary}
+                      color={isOutOfStock || quantity >= stock ? colors.textMuted : colors.textPrimary}
                     />
                   </TouchableOpacity>
                 </View>
@@ -388,9 +460,16 @@ export default function ProductDetailsScreen({ route, navigation }) {
         >
           <View style={styles.totalSection}>
             <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>
-              Total Price ({quantity} {quantity === 1 ? 'item' : 'items'})
+              {isOutOfStock
+                ? 'Item Unavailable'
+                : `Total Price (${quantity} ${quantity === 1 ? 'item' : 'items'})`}
             </Text>
-            <Text style={[styles.totalPrice, { color: colors.textPrimary }]}>
+            <Text
+              style={[
+                styles.totalPrice,
+                { color: isOutOfStock ? colors.textMuted : colors.textPrimary },
+              ]}
+            >
               ${totalPrice}
             </Text>
           </View>
@@ -399,20 +478,41 @@ export default function ProductDetailsScreen({ route, navigation }) {
             style={[
               styles.cartButton,
               {
-                backgroundColor: addedNotice ? '#10B981' : colors.primary,
+                backgroundColor: isOutOfStock
+                  ? colors.border
+                  : addedNotice
+                  ? '#10B981'
+                  : colors.primary,
                 borderRadius: borderRadius.md,
               },
             ]}
             onPress={handleAddToCart}
-            activeOpacity={0.8}
+            disabled={isOutOfStock}
+            activeOpacity={isOutOfStock ? 1 : 0.8}
+            accessibilityLabel={isOutOfStock ? 'Out of stock' : 'Add to cart'}
           >
             <Ionicons
-              name={addedNotice ? 'checkmark-circle' : 'cart'}
+              name={
+                isOutOfStock
+                  ? 'ban-outline'
+                  : addedNotice
+                  ? 'checkmark-circle'
+                  : 'cart'
+              }
               size={20}
-              color="#FFFFFF"
+              color={isOutOfStock ? colors.textMuted : '#FFFFFF'}
             />
-            <Text style={styles.cartButtonText}>
-              {addedNotice ? 'Added to Cart!' : 'Add to Cart'}
+            <Text
+              style={[
+                styles.cartButtonText,
+                { color: isOutOfStock ? colors.textMuted : '#FFFFFF' },
+              ]}
+            >
+              {isOutOfStock
+                ? 'Out of Stock'
+                : addedNotice
+                ? 'Added to Cart!'
+                : 'Add to Cart'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -533,6 +633,27 @@ const styles = StyleSheet.create({
     marginTop: -20,
     padding: 20,
     borderTopWidth: 1,
+  },
+  outOfStockBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderWidth: 1,
+    borderRadius: 10,
+    marginBottom: 16,
+  },
+  outOfStockBannerContent: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  outOfStockTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  outOfStockDesc: {
+    fontSize: 12,
+    lineHeight: 16,
   },
   ratingSection: {
     flexDirection: 'row',

@@ -14,6 +14,9 @@ export default function ProductCard({
 
   if (!product) return null;
 
+  const stock = typeof product.stock === 'number' ? product.stock : 0;
+  const isOutOfStock = stock <= 0;
+
   return (
     <TouchableOpacity
       style={[
@@ -46,10 +49,16 @@ export default function ProductCard({
           />
         )}
 
-        {/* Category Badge */}
+        {/* Category & Stock Badges */}
         <View style={[styles.badge, { backgroundColor: 'rgba(0, 0, 0, 0.65)' }]}>
           <Text style={styles.badgeText}>{product.categoryName}</Text>
         </View>
+
+        {isOutOfStock && (
+          <View style={[styles.stockAlertBadge, { backgroundColor: colors.danger }]}>
+            <Text style={styles.stockAlertText}>OUT OF STOCK</Text>
+          </View>
+        )}
       </View>
 
       {/* Info Container */}
@@ -91,13 +100,24 @@ export default function ProductCard({
             <TouchableOpacity
               onPress={(e) => {
                 e.stopPropagation && e.stopPropagation();
-                onAddToCart(product);
+                if (!isOutOfStock) {
+                  onAddToCart(product);
+                }
               }}
-              style={[styles.addButton, { backgroundColor: colors.primary }]}
-              activeOpacity={0.7}
+              disabled={isOutOfStock}
+              style={[
+                styles.addButton,
+                { backgroundColor: isOutOfStock ? colors.border : colors.primary },
+              ]}
+              activeOpacity={isOutOfStock ? 1 : 0.7}
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              accessibilityLabel={isOutOfStock ? 'Out of stock' : 'Add to cart'}
             >
-              <Ionicons name="add" size={18} color="#FFFFFF" />
+              <Ionicons
+                name={isOutOfStock ? 'ban' : 'add'}
+                size={16}
+                color={isOutOfStock ? colors.textMuted : '#FFFFFF'}
+              />
             </TouchableOpacity>
           )}
         </View>
@@ -151,6 +171,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  stockAlertBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  stockAlertText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.4,
   },
   infoContainer: {
     padding: 12,
