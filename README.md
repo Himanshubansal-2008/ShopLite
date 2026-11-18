@@ -2,7 +2,7 @@
 
 A modern, frontend-only e-commerce application built with **React Native** and **Expo**, designed specifically to showcase the capabilities of the published npm package [**SkellX**](https://www.npmjs.com/package/skellx) in a real-world mobile app environment.
 
-[![npm package](https://img.shields.io/badge/npm-skellx@0.1.0-CB3837?style=flat&logo=npm)](https://www.npmjs.com/package/skellx)
+[![npm package](https://img.shields.io/badge/npm-skellx@1.2.0-CB3837?style=flat&logo=npm)](https://www.npmjs.com/package/skellx)
 [![Library GitHub](https://img.shields.io/badge/GitHub-SkellX%20Library-181717?style=flat&logo=github)](https://github.com/Himanshubansal-2008/SkellX)
 [![Expo SDK](https://img.shields.io/badge/Expo-SDK%2058-000020?style=flat&logo=expo)](https://expo.dev)
 [![React Native](https://img.shields.io/badge/React%20Native-0.88.1-61DAFB?style=flat&logo=react)](https://reactnative.dev)
@@ -96,7 +96,7 @@ import {
 - **Framework**: [React Native](https://reactnative.dev/) (Expo SDK 58)
 - **Language**: JavaScript (Clean ES6+, no TypeScript)
 - **Navigation**: [React Navigation 7](https://reactnavigation.org/) (`@react-navigation/native-stack`)
-- **Skeleton Library**: [SkellX](https://www.npmjs.com/package/skellx) (`v0.1.0`)
+- **Skeleton Library**: [SkellX](https://www.npmjs.com/package/skellx) (`v1.2.0`)
 - **Icons**: `@expo/vector-icons` (Ionicons)
 - **Styling**: React Native `StyleSheet` with shared Design Token theme
 
@@ -108,6 +108,7 @@ import {
 ShopLite/
 ├── assets/
 │   ├── images/
+│   ├── adaptive-icon.png
 │   ├── icon.png
 │   ├── splash-icon.png
 │   └── favicon.png
